@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/jdboachie-at/task-manager-api#readme",
   "dependencies": {
+    "dotenv": "^17.4.2",
     "express": "^5.1.0"
   }
 }
