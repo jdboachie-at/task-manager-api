@@ -1,27 +1,23 @@
 {
   "name": "task-manager-api",
-  "version": "1.0.0",
-  "description": "Task Manager API",
-  "main": "app.js",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prettier": "^3.8.3"
+  },
   "scripts": {
-    "start": "node app.js",
-    "dev": "node --watch app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "format": "prettier --write \"**/*.ts\""
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jdboachie-at/task-manager-api.git"
+  "peerDependencies": {
+    "typescript": "^5"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/jdboachie-at/task-manager-api/issues"
-  },
-  "homepage": "https://github.com/jdboachie-at/task-manager-api#readme",
   "dependencies": {
+    "@types/express": "^5.0.6",
     "dotenv": "^17.4.2",
-    "express": "^5.1.0"
+    "express": "^5.2.1",
+    "mongoose": "^9.5.0",
+    "zod": "^4.3.6"
   }
 }
