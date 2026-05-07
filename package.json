@@ -8,15 +8,20 @@
     "prettier": "^3.8.3"
   },
   "scripts": {
+    "dev": "bun run --watch index.ts",
     "format": "prettier --write \"**/*.ts\""
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.5.0",
     "zod": "^4.3.6"
   }
