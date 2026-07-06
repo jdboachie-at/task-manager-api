@@ -5,10 +5,10 @@ export default function logger(
 	res: Response,
 	next: NextFunction,
 ): void {
-	const { method, originalUrl } = req
 	res.on("finish", () => {
-		const timestamp = new Date().toISOString()
-		console.log(`${timestamp} ${method} ${res.statusCode} ${originalUrl}`)
+		console.log(
+			`${new Date().toISOString()} ${req.method} ${res.statusCode} ${req.originalUrl}`,
+		)
 	})
 	next()
 }

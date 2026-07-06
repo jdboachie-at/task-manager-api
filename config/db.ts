@@ -1,16 +1,28 @@
 import "dotenv/config"
-import mongoose from "mongoose"
+import { Database } from "bun:sqlite"
 
-export async function connectToDatabase() {
-	const MONGODB_URI = process.env.MONGODB_URI
+export const db = new Database(process.env.DB_URI || "data.db")
 
-	if (!MONGODB_URI) {
-		throw new Error("MONGODB_URI not set")
-	}
+db.run(`
+	PRAGMA journal_mode = WAL;
+	PRAGMA foreign_keys = ON;
 
-	await mongoose.connect(MONGODB_URI)
-}
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+		created_at TEXT NOT NULL DEFAULT (datetime('now'))
+	);
 
-export async function disconnectFromDatabase() {
-	await mongoose.disconnect()
-}
+	CREATE TABLE IF NOT EXISTS tasks (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		title TEXT NOT NULL,
+		completed INTEGER NOT NULL DEFAULT 0,
+		user_id INTEGER NOT NULL REFERENCES users(id),
+		created_at TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+`)

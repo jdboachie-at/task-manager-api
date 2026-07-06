@@ -7,7 +7,5 @@ export class AppError extends Error {
 		this.name = "AppError"
 		this.status = status
 		this.errors = errors
-
-		Object.setPrototypeOf(this, AppError.prototype)
 	}
 }
