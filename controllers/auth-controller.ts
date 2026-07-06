@@ -1,15 +1,18 @@
 import bcrypt from "bcrypt"
-import type { NextFunction, Request, Response } from "express"
+import type { Request, Response } from "express"
 import jwt from "jsonwebtoken"
 import { z } from "zod"
 
-import { User } from "../models/user"
+import { JWT_EXPIRES_IN, JWT_SECRET } from "../config/jwt"
+import { createUser, findUserByEmail } from "../models/user"
 import { AppError } from "../utils/app-error"
+
+const SALT_ROUNDS = 10
 
 const createUserSchema = z.object({
 	name: z.string(),
 	email: z.email(),
-	password: z.string(),
+	password: z.string().min(8, "Password must be at least 8 characters"),
 })
 
 const loginSchema = z.object({
@@ -17,81 +20,73 @@ const loginSchema = z.object({
 	password: z.string(),
 })
 
-export async function register(
-	req: Request,
-	res: Response,
-	next: NextFunction,
-) {
-	try {
-		const parseResult = createUserSchema.safeParse(req.body)
+export async function register(req: Request, res: Response) {
+	const parseResult = createUserSchema.safeParse(req.body)
 
-		if (!parseResult.success) {
-			return next(
-				new AppError(
-					"Validation failed",
-					400,
-					z.treeifyError(parseResult.error),
-				),
-			)
-		}
-
-		const user = await User.create(parseResult.data)
-
-		return res.status(201).json({
-			success: true,
-			message: "User created successfully",
-			data: user,
-		})
-	} catch (error) {
-		return next(error)
+	if (!parseResult.success) {
+		throw new AppError(
+			"Validation failed",
+			400,
+			z.treeifyError(parseResult.error),
+		)
 	}
+
+	const { name, email, password } = parseResult.data
+	const passwordHash = await bcrypt.hash(password, SALT_ROUNDS)
+
+	let user
+	try {
+		user = createUser(name, email, passwordHash)
+	} catch (error) {
+		if ((error as { code?: string }).code === "SQLITE_CONSTRAINT_UNIQUE") {
+			throw new AppError("Email already registered", 409)
+		}
+		throw error
+	}
+
+	return res.status(201).json({
+		success: true,
+		message: "User created successfully",
+		data: user,
+	})
 }
 
-export async function login(req: Request, res: Response, next: NextFunction) {
-	try {
-		const parseResult = loginSchema.safeParse(req.body)
+export async function login(req: Request, res: Response) {
+	const parseResult = loginSchema.safeParse(req.body)
 
-		if (!parseResult.success) {
-			return next(
-				new AppError(
-					"Validation failed",
-					400,
-					z.treeifyError(parseResult.error),
-				),
-			)
-		}
-
-		const email = parseResult.data.email
-		const user = await User.findOne({ email }).select("+password")
-
-		if (!user) {
-			next(new AppError("Invalid credentials", 401))
-			return
-		}
-
-		const passwordOk = await bcrypt.compare(
-			parseResult.data.password,
-			user.password,
+	if (!parseResult.success) {
+		throw new AppError(
+			"Validation failed",
+			400,
+			z.treeifyError(parseResult.error),
 		)
-
-		if (!passwordOk) {
-			next(new AppError("Invalid credentials", 401))
-			return
-		}
-
-		const token = jwt.sign(
-			{ id: user._id, role: user.role },
-			process.env.JWT_SECRET!,
-			{ expiresIn: "1h" },
-		)
-
-		return res.status(200).json({
-			success: true,
-			message: "Logged in successfully",
-			token,
-			data: { user: { ...user, password: undefined } },
-		})
-	} catch (error) {
-		return next(error)
 	}
+
+	const user = findUserByEmail(parseResult.data.email)
+
+	if (!user) {
+		throw new AppError("Invalid credentials", 401)
+	}
+
+	const passwordOk = await bcrypt.compare(
+		parseResult.data.password,
+		user.password,
+	)
+
+	if (!passwordOk) {
+		throw new AppError("Invalid credentials", 401)
+	}
+
+	const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
+		expiresIn: JWT_EXPIRES_IN,
+	})
+
+	const { password: _, ...safeUser } = user
+
+	return res.status(200).json({
+		success: true,
+		message: "Logged in successfully",
+		token,
+		data: { user: safeUser },
+	})
 }

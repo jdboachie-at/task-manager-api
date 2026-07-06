@@ -1,49 +1,37 @@
-import bcrypt from "bcrypt"
-import type { NextFunction } from "express"
-import mongoose, { type InferSchemaType } from "mongoose"
+import { db } from "../config/db"
+import type { Role } from "../utils/permissions"
 
-const userSchema = new mongoose.Schema(
-	{
-		name: {
-			type: String,
-			required: true,
-		},
-		email: {
-			type: String,
-			required: true,
-			unique: true,
-		},
-		password: {
-			type: String,
-			required: true,
-			select: false,
-		},
-		role: {
-			type: String,
-			default: "user",
-		},
-	},
-	{
-		toJSON: {
-			transform(_doc, ret) {
-				delete ret.password
-				return ret
-			},
-		},
-	},
-)
+export type User = {
+	id: number
+	name: string
+	email: string
+	role: Role
+	created_at: string
+}
 
-userSchema.pre("save", async function (next: NextFunction) {
-	try {
-		if (!this.isModified("password")) {
-			return next()
-		}
-		const saltRounds = 10
-		this.password = await bcrypt.hash(this.password, saltRounds)
-	} catch (error) {
-		next(error)
-	}
-})
+const PUBLIC_COLUMNS = "id, name, email, role, created_at"
 
-export type User = InferSchemaType<typeof userSchema>
-export const User = mongoose.model<User>("User", userSchema)
+export function createUser(
+	name: string,
+	email: string,
+	passwordHash: string,
+): User {
+	return db
+		.query(
+			`INSERT INTO users (name, email, password) VALUES (?, ?, ?)
+			 RETURNING ${PUBLIC_COLUMNS}`,
+		)
+		.get(name, email, passwordHash) as User
+}
+
+export function findUserByEmail(
+	email: string,
+): (User & { password: string }) | null {
+	return db
+		.query(`SELECT ${PUBLIC_COLUMNS}, password FROM users WHERE email = ?`)
+		.get(email) as (User & { password: string }) | null
+}
+
+export function listUsers(): User[] {
+	return db.query(`SELECT ${PUBLIC_COLUMNS} FROM users`).all() as User[]
+}
